@@ -181,14 +181,15 @@ def traducir_jerga_genz(frase_original):
         "bussin": "expresión utilizada para describir que algo, especialmente la comida, está delicioso",
         "womp womp": "expresión burlona usada para restar importancia a las quejas de alguien",
         "clean girl": "estética basada en el minimalismo, la comodidad, la naturalidad y un aspecto pulcro",
-        "touch grass": "salir a la realidad y despejar la mente fuera de las pantallas e internet"
+        "touch grass": "salir a la realidad y despejar la mente fuera de las pantallas e internet",
+        "comfort person": "persona de confianza que transmite paz, seguridad y apoyo emocional, alguien con quien te sientes 100% cómodo siendo tú mismo"
     }
     
     # Expresiones compuestas prioritarias (se removió "bajar de la nube" de aquí)
     expresiones_compuestas = [
         "en plan", "en shock", "shock cultural", "la neta", "la queso", "en mi era", "it girl", "red flag", "glow up", "vibe check", "main character", "un 10", "un 7", "un 6", "f en el chat", "nepo baby", "out of pocket", "pick me girl", "no cap", "rent free", "plot twist", 
         "green flag", "side eye", "left no crumbs", "soft launch", "hard launch", "womp womp", 
-        "clean girl", "touch grass"  
+        "clean girl", "touch grass", "comfort person"  
     ]
     
     frase_procesada = frase_original
