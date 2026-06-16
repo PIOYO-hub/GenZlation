@@ -26,8 +26,6 @@ def normalizar_palabra(palabra, diccionario):
         return palabra
 
     # 2. Manejo de verbos: Pretérito Perfecto Simple -> Infinitivo (-ar, -ear)
-    # Ejemplos: ghosteé, ghosteaste, ghosteó, ghosteamos, ghosteasteis, ghostearon
-    # Ejemplos: funé, funaste, funó, funamos, funasteis, funaron
     terminaciones_pasado = {
         'é': 'ar', 'aste': 'ar', 'ó': 'ar', 'amos': 'ar', 'asteis': 'ar', 'aron': 'ar',
         'í': 'er', 'iste': 'er', 'ió': 'er', 'imos': 'er', 'isteis': 'er', 'ieron': 'er'
@@ -49,7 +47,6 @@ def normalizar_palabra(palabra, diccionario):
                     return posible_devorar
 
     # 3. Quitar plurales en inglés y español (-s, -es)
-    # Excepciones que terminan en 's' o 'x' de forma natural en GenZ
     excepciones_s = ["vibes", "facts", "factos", "factores", "amix", "la queso", "en mi era", "bajar de la nube", "it girl", "vibe check"]
     if palabra not in excepciones_s:
         if palabra.endswith('es') and len(palabra) > 4:
@@ -63,7 +60,6 @@ def normalizar_palabra(palabra, diccionario):
     if palabra.endswith('as') or palabra.endswith('os'):
         palabra = palabra[:-2] + 'o'
     elif palabra.endswith('a') and not palabra.endswith('era') and palabra != "funa" and palabra != "neta":
-        # Intenta transformarla a masculino base si existe
         if palabra.endswith('ada'):
             posible_masec = palabra[:-3] + 'ado'
             if posible_masec in diccionario: return posible_masec
@@ -96,7 +92,7 @@ def traducir_jerga_genz(frase_original):
         "flow": "estilo, ritmo, carisma o actitud genial que tiene una persona",
         "la queso": "frase que significa 'la que soporte', usada para presumir el éxito propio ante los envidiosos",
         "en mi era": "etapa de la vida enfocada en un estilo, estética, actitud o interés muy específico",
-        "bajar de la nube": "hacer que alguien aterrice en la realidad y deje de hacerse falsas ilusiones",
+        "bajar de la nube": "hacer que alguien aterrice en la realidad y deje de hacerse falsas illusions",
         "factores": "verdades indiscutibles o argumentos lógicos con los que es imposible debatir (del inglés 'facts')",
         "it girl": "chica que marca tendencia, tiene un estilo único y es un referente de moda o actitud",
         "pec": "estar riquísimo o ser excelente",
@@ -105,7 +101,7 @@ def traducir_jerga_genz(frase_original):
         "ghostear": "desaparecer y dejar de responder de repente",
         "hype": "mucha emoción o altas expectativas",
         "red flag": "una señal de peligro o comportamiento alarmante",
-        "servir": "lucir espectacular o hacer algo increíblemente bien",
+        "servir": "lucir spectacular o hacer algo increíblemente bien",
         "funar": "cancelar o criticar públicamente a alguien",
         "npc": "una persona predecible o que no destaca",
         "bro": "amigo o hermano",
@@ -188,22 +184,29 @@ def traducir_jerga_genz(frase_original):
         "touch grass": "salir a la realidad y despejar la mente fuera de las pantallas e internet"
     }
     
-    # Expresiones compuestas prioritarias (para evitar que se dividan por espacios)
+    # Expresiones compuestas prioritarias (se removió "bajar de la nube" de aquí)
     expresiones_compuestas = [
-"en plan", "en shock", "shock cultural", "la neta", "la queso", "en mi era", "bajar de la nube", "it girl", "red flag", "glow up", "vibe check", "main character", "un 10", "un 7", "un 6", "f en el chat", "nepo baby", "out of pocket", "pick me girl", "no cap", "rent free", "plot twist", 
-       "green flag", "side eye", "left no crumbs", "soft launch", "hard launch", "womp womp", 
-       "clean girl", "touch grass"  
+        "en plan", "en shock", "shock cultural", "la neta", "la queso", "en mi era", "it girl", "red flag", "glow up", "vibe check", "main character", "un 10", "un 7", "un 6", "f en el chat", "nepo baby", "out of pocket", "pick me girl", "no cap", "rent free", "plot twist", 
+        "green flag", "side eye", "left no crumbs", "soft launch", "hard launch", "womp womp", 
+        "clean girl", "touch grass"  
     ]
     
     frase_procesada = frase_original
     
-    # Primero buscamos y traducimos las frases compuestas para que no se separen
+    # --- Detección inteligente de "bajar de la nube" conjugado ---
+    patron_bajar = re.compile(r'\b(baj[a-zéíóúáñ]*)\s+de\s+la\s+nube\b', re.IGNORECASE)
+    match_bajar = patron_bajar.search(frase_procesada)
+    if match_bajar:
+        texto_detectado = match_bajar.group(0)
+        definicion = diccionario_jerga["bajar de la nube"]
+        frase_procesada = patron_bajar.sub(f"<u>{texto_detectado}</u> [{definicion}]", frase_procesada)
+    # --------------------------------------------------------------
+    
+    # Buscamos y traducimos las demás frases compuestas fijas
     for compuesta in expresiones_compuestas:
-        # Usamos regex ignorando mayúsculas/minúsculas pero manteniendo los signos
         patron = re.compile(r'\b' + re.escape(compuesta) + r'\b', re.IGNORECASE)
         if patron.search(frase_procesada):
             definicion = diccionario_jerga[compuesta]
-            # Formateamos manteniendo el texto original hallado
             def reemplazar(match):
                 return f"<u>{match.group(0)}</u> [{definicion}]"
             frase_procesada = patron.sub(reemplazar, frase_procesada)
@@ -248,7 +251,7 @@ st.write("")
 # Caja de texto para el usuario
 texto_usuario = st.text_area(
     "Escribe o pega aquí tu texto:",
-    placeholder="Ejemplo: Megaghosteé a mi amix porque estaba superbasada y me dio cringe..."
+    placeholder="Ejemplo: Me bajaron de la nube porque estaba superbasada..."
 )
 
 # Contador y validación de palabras máximo 100
@@ -272,5 +275,3 @@ if st.button("✨ Traducir"):
         
         # Usamos st.write con unsafe_allow_html=True para procesar etiquetas <u>
         st.write(resultado, unsafe_allow_html=True)
-
-        
