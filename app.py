@@ -92,7 +92,7 @@ def traducir_jerga_genz(frase_original):
         "flow": "estilo, ritmo, carisma o actitud genial que tiene una persona",
         "la queso": "frase que significa 'la que soporte', usada para presumir el éxito propio ante los envidiosos",
         "en mi era": "etapa de la vida enfocada en un estilo, estética, actitud o interés muy específico",
-        "bajar de la nube": "hacer que alguien aterrice en la realidad y deje de hacerse falsas illusions",
+        "bajar de la nube": "hacer que alguien aterrice en la realidad y deje de hacerse falsas ilusiones",
         "factores": "verdades indiscutibles o argumentos lógicos con los que es imposible debatir (del inglés 'facts')",
         "it girl": "chica que marca tendencia, tiene un estilo único y es un referente de moda o actitud",
         "pec": "estar riquísimo o ser excelente",
