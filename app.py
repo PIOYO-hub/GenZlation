@@ -251,7 +251,7 @@ st.write("")
 # Caja de texto para el usuario
 texto_usuario = st.text_area(
     "Escribe o pega aquí tu texto:",
-    placeholder="Ejemplo: Me bajaron de la nube porque estaba superbasada..."
+    placeholder="Ejemplo: Megaghosteé a mi amix porque estaba superbasada y me dio cringe..."
 )
 
 # Contador y validación de palabras máximo 100
