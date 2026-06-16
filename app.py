@@ -182,7 +182,7 @@ def traducir_jerga_genz(frase_original):
         "womp womp": "expresión burlona usada para restar importancia a las quejas de alguien",
         "clean girl": "estética basada en el minimalismo, la comodidad, la naturalidad y un aspecto pulcro",
         "touch grass": "salir a la realidad y despejar la mente fuera de las pantallas e internet",
-        "comfort person": "persona de confianza que transmite paz, seguridad y apoyo emocional, alguien con quien te sientes 100% cómodo siendo tú mismo"
+        "comfort person": "persona de confianza que transmite paz, seguridad y apoyo emocional"
     }
     
     # Expresiones compuestas prioritarias (se removió "bajar de la nube" de aquí)
