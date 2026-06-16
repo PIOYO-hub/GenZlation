@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 
 # Configuración de la página
 st.set_page_config(
@@ -7,9 +8,97 @@ st.set_page_config(
     layout="centered"
 )
 
+def normalizar_palabra(palabra, diccionario):
+    """
+    Limpia la palabra quitando prefijos, manejando plurales, géneros y 
+    conjugaciones en pretérito perfecto simple para que coincida con el diccionario.
+    """
+    palabra = palabra.lower().strip()
+    
+    # 1. Quitar prefijos comunes (super-, mega-)
+    if palabra.startswith("super") and len(palabra) > 5:
+        palabra = palabra[5:]
+    elif palabra.startswith("mega") and len(palabra) > 4:
+        palabra = palabra[4:]
+        
+    # Si tras quitar el prefijo ya existe directamente, la devolvemos
+    if palabra in diccionario:
+        return palabra
+
+    # 2. Manejo de verbos: Pretérito Perfecto Simple -> Infinitivo (-ar, -ear)
+    # Ejemplos: ghosteé, ghosteaste, ghosteó, ghosteamos, ghosteasteis, ghostearon
+    # Ejemplos: funé, funaste, funó, funamos, funasteis, funaron
+    terminaciones_pasado = {
+        'é': 'ar', 'aste': 'ar', 'ó': 'ar', 'amos': 'ar', 'asteis': 'ar', 'aron': 'ar',
+        'í': 'er', 'iste': 'er', 'ió': 'er', 'imos': 'er', 'isteis': 'er', 'ieron': 'er'
+    }
+    
+    for term, reemplazo in terminaciones_pasado.items():
+        if palabra.endswith(term):
+            posible_verbo = palabra[:-len(term)] + reemplazo
+            if posible_verbo in diccionario:
+                return posible_verbo
+            # Caso especial para verbos terminados en -ear (ej: ghostear -> ghostió / ghosteó)
+            posible_verbo_ear = palabra[:-len(term)] + 'ear'
+            if posible_verbo_ear in diccionario:
+                return posible_verbo_ear
+            # Caso específico para "devoraste" -> "devorar"
+            if palabra.endswith("aste"):
+                posible_devorar = palabra[:-4] + "ar"
+                if posible_devorar in diccionario:
+                    return posible_devorar
+
+    # 3. Quitar plurales en inglés y español (-s, -es)
+    # Excepciones que terminan en 's' o 'x' de forma natural en GenZ
+    excepciones_s = ["vibes", "facts", "factos", "factores", "amix", "la queso", "en mi era", "bajar de la nube", "it girl", "vibe check"]
+    if palabra not in excepciones_s:
+        if palabra.endswith('es') and len(palabra) > 4:
+            palabra_sin_plural = palabra[:-2]
+            if palabra_sin_plural in diccionario: return palabra_sin_plural
+        elif palabra.endswith('s') and len(palabra) > 3:
+            palabra_sin_plural = palabra[:-1]
+            if palabra_sin_plural in diccionario: return palabra_sin_plural
+
+    # 4. Unificación de género (-a, -as, -os -> -o / -ado / -ada)
+    if palabra.endswith('as') or palabra.endswith('os'):
+        palabra = palabra[:-2] + 'o'
+    elif palabra.endswith('a') and not palabra.endswith('era') and palabra != "funa" and palabra != "neta":
+        # Intenta transformarla a masculino base si existe
+        if palabra.endswith('ada'):
+            posible_masec = palabra[:-3] + 'ado'
+            if posible_masec in diccionario: return posible_masec
+        posible_masc = palabra[:-1] + 'o'
+        if posible_masc in diccionario: return posible_masc
+
+    # 5. Mapeos o alias directos solicitados (delu -> delulu, obvi -> obvio)
+    if palabra == "delu":
+        return "delulu"
+    if palabra == "obvi":
+        return "obvio"
+
+    return palabra
+
 def traducir_jerga_genz(frase_original):
-    # Diccionario base con los significados principales
+    # Diccionario Generación Z limpio y sin duplicados
     diccionario_jerga = {
+        "en plan": "como 'si fuera', 'o sea', expresión usada para explicar o matizar algo",
+        "en shock": "sorprendido, impactado o sin palabras ante una situación",
+        "shock cultural": "impacto o sorpresa extrema al notar una gran diferencia de costumbres o estilos de vida",
+        "ex": "expareja, o por extensión, algo que ya forma parte del pasado y con lo que no hay vínculo",
+        "chisme": "el cotilleo, rumor o drama del momento que resulta muy interesante contar",
+        "onda": "vibración, estilo o actitud que transmite una persona o situación",
+        "la neta": "la pura verdad o la realidad de las cosas",
+        "outfit": "el conjunto de ropa, calzado y accesorios que alguien lleva puesto",
+        "amix": "forma cariñosa, neutra o informal de referirse a un amigo o amiga",
+        "tipo": "expresión equivalente a 'por ejemplo' o 'como si fuera'",
+        "delulu": "estar delirando o crearse expectativas irreales sobre algo (derivado de 'delusional')",
+        "obvio": "usado para confirmar algo que es totalmente evidente",
+        "flow": "estilo, ritmo, carisma o actitud genial que tiene una persona",
+        "la queso": "frase que significa 'la que soporte', usada para presumir el éxito propio ante los envidiosos",
+        "en mi era": "etapa de la vida enfocada en un estilo, estética, actitud o interés muy específico",
+        "bajar de la nube": "hacer que alguien aterrice en la realidad y deje de hacerse falsas ilusiones",
+        "factores": "verdades indiscutibles o argumentos lógicos con los que es imposible debatir (del inglés 'facts')",
+        "it girl": "chica que marca tendencia, tiene un estilo único y es un referente de moda o actitud",
         "pec": "estar riquísimo o ser excelente",
         "basado": "con opiniones muy acertadas y firmes",
         "cringe": "vergüenza ajena",
@@ -19,21 +108,19 @@ def traducir_jerga_genz(frase_original):
         "servir": "lucir espectacular o hacer algo increíblemente bien",
         "funar": "cancelar o criticar públicamente a alguien",
         "npc": "una persona predecible o que no destaca",
-        "bro": "amigo",
-        "literal": "exactamente así",
-        "random": "aleatorio o imprevisto",
+        "bro": "amigo o hermano",
+        "literal": "exactamente así, sin exagerar",
+        "random": "aleatorio, imprevisto o extraño",
         "chill": "tranquilo o relajado", 
         "glow up": "una gran transformación física o de estilo para mejor",
         "padreado": "una respuesta magistral o dominio absoluto de la situación",
         "crush": "un flechazo o amor platónico",
         "shippear": "desear que dos personas formen una pareja",
         "flexear": "presumir o alardear de algo",
-        "delulu": "vivir en una fantasía o ser demasiado iluso",
         "vibe check": "evaluar la energía o la actitud de alguien",
         "simp": "alguien que hace demasiado por complacer a la persona que le gusta",
         "impactrueno": "quedarse completamente en shock o sorprendido",
-        "era": "una etapa o fase específica de la vida",
-        "flopar": "fracasar estrepitosamente",
+        "flopear": "fracasar estrepitosamente",
         "hater": "una persona difamadora o que critica con malicia",
         "main character": "ser el centro de atención o actuar como el protagonista",
         "aura": "el carisma, respeto o magnetismo que proyecta una persona",
@@ -60,7 +147,6 @@ def traducir_jerga_genz(frase_original):
         "ghosting": "desaparecer de la vida de alguien sin dar explicaciones",
         "gaslightear": "manipular psicológicamente a alguien",
         "gymbro": "un entusiasta obsesivo del gimnasio",
-        "basada": "persona que da su opinión sincera sin miedo a las críticas",
         "normie": "una persona muy común que sigue las modas sin criterio propio",
         "tryhard": "alguien que se esfuerza en exceso de forma casi obsesiva",
         "no cap": "te lo digo totalmente en serio y sin mentiras",
@@ -101,96 +187,56 @@ def traducir_jerga_genz(frase_original):
         "clean girl": "estética basada en el minimalismo, la comodidad, la naturalidad y un aspecto pulcro",
         "touch grass": "salir a la realidad y despejar la mente fuera de las pantallas e internet"
     }
-
-    # Mapa de conjugaciones y variaciones frecuentes en presente para los verbos y adjetivos Gen Z
-    # Esto ayuda a redirigir palabras flexionadas a su término original en el diccionario
-    mapeo_variaciones = {
-        # Verbo: servir
-        "sirve": "servir", "sirven": "servir", "sirvo": "servir", "servimos": "servir", "sirves": "servir", "sirviendo": "servir",
-        # Verbo: ghostear
-        "ghostea": "ghostear", "ghostean": "ghostear", "ghosteo": "ghostear", "ghosteamos": "ghostear", "ghosteas": "ghostear", "ghosteando": "ghostear",
-        # Verbo: funar
-        "funa": "funar", "funan": "funar", "funo": "funar", "funamos": "funar", "funas": "funar", "funando": "funar",
-        # Verbo: shippear
-        "shippea": "shippear", "shippean": "shippear", "shippeo": "shippear", "shippeamos": "shippear", "shippeas": "shippear", "shippeando": "shippear",
-        # Verbo: flexear
-        "flexea": "flexear", "flexean": "flexear", "flexeo": "flexear", "flexeamos": "flexear", "flexeas": "flexear", "flexeando": "flexear",
-        # Verbo: flopar
-        "flopa": "flopar", "lopan": "flopar", "flopo": "flopar", "flopamos": "flopar", "flopando": "flopar",
-        # Verbo: cocinar
-        "cocina": "cocinar", "cocinan": "cocinar", "cocino": "cocinar", "cocinamos": "cocinar", "cocinas": "cocinar", "cocinando": "cocinar",
-        # Verbo: devorar
-        "devora": "devorar", "devoran": "devorar", "devoro": "devorar", "devoramos": "devorar", "devoras": "devorar", "devorando": "devorar",
-        # Verbo: gaslightear
-        "gaslightea": "gaslightear", "gaslightean": "gaslightear", "gaslighteo": "gaslightear", "gaslighteando": "gaslightear",
-        # Verbo: stalkear
-        "stalkea": "stalkear", "stalkean": "stalkear", "stalkeo": "stalkear", "stalkeamos": "stalkear", "stalkeas": "stalkear", "stalkeando": "stalkear",
-        # Verbo: manifestar
-        "manifiesta": "manifestar", "manifiestan": "manifestar", "manifiesto": "manifestar", "manifestamos": "manifestar", "manifestando": "manifestar",
-        # Variaciones de género/número comunes
-        "basada": "basado", "basados": "basado", "basadas": "basado",
-        "coquettes": "coquette", "haters": "hater", "simps": "simp", "clowns": "clown", "normies": "normie", "gymbros": "gymbro"
-    }
-
-    frase_analisis_subrayado = frase_original
-    terminos_compuestos = [k for k in diccionario_jerga.keys() if " " in k]
-    mapa_reemplazos_subrayado = {}
     
-    # 1. Procesar primero los términos compuestos (ej: "no cap", "plot twist")
-    for i, termino in enumerate(terminos_compuestos):
-        definicion = diccionario_jerga[termino]
-        idx = frase_analisis_subrayado.lower().find(termino)
-        
-        while idx != -1:
-            palabra_real = frase_analisis_subrayado[idx:idx+len(termino)]
-            marca = f"[[_COMPUESTO_{i}_]]"
-            mapa_reemplazos_subrayado[marca] = f"<u>{palabra_real}</u> [{definicion}]"
-            frase_analisis_subrayado = frase_analisis_subrayado[:idx] + marca + frase_analisis_subrayado[idx+len(termino):]
-            idx = frase_analisis_subrayado.lower().find(termino)
-
-    # 2. Procesar palabras individuales y formas conjugadas
-    palabras_subrayado = frase_analisis_subrayado.split()
-    resultado_subrayado_lista = []
+    # Expresiones compuestas prioritarias (para evitar que se dividan por espacios)
+    expresiones_compuestas = [
+"en plan", "en shock", "shock cultural", "la neta", "la queso", "en mi era", "bajar de la nube", "it girl", "red flag", "glow up", "vibe check", "main character", "un 10", "un 7", "un 6", "f en el chat", "nepo baby", "out of pocket", "pick me girl", "no cap", "rent free", "plot twist", 
+       "green flag", "side eye", "left no crumbs", "soft launch", "hard launch", "womp womp", 
+       "clean girl", "touch grass"  
+    ]
     
-    for p_sub in palabras_subrayado:
-        if "[[_COMPUESTO_" in p_sub:
-            resultado_subrayado_lista.append(p_sub)
+    frase_procesada = frase_original
+    
+    # Primero buscamos y traducimos las frases compuestas para que no se separen
+    for compuesta in expresiones_compuestas:
+        # Usamos regex ignorando mayúsculas/minúsculas pero manteniendo los signos
+        patron = re.compile(r'\b' + re.escape(compuesta) + r'\b', re.IGNORECASE)
+        if patron.search(frase_procesada):
+            definicion = diccionario_jerga[compuesta]
+            # Formateamos manteniendo el texto original hallado
+            def reemplazar(match):
+                return f"<u>{match.group(0)}</u> [{definicion}]"
+            frase_procesada = patron.sub(reemplazar, frase_procesada)
+            
+    # Separamos el resto de palabras por espacios
+    palabras_originales = frase_procesada.split()
+    frase_traducida = []
+    
+    for palabra_or in palabras_originales:
+        # Si ya contiene etiquetas HTML de las compuestas, saltarla
+        if "<u>" in palabra_or:
+            frase_traducida.append(palabra_or)
             continue
             
-        # Extraer la palabra limpia de signos de puntuación
-        palabra_limpia_dict = p_sub.lower()
-        for signo in [".", ",", "!", "¡", "?", "¿", ":", ";"]:
-            palabra_limpia_dict = palabra_limpia_dict.replace(signo, "")
-            
-        # Determinar el término clave (ya sea directo o mediante su conjugación/variación)
-        clave_encontrada = None
-        if palabra_limpia_dict in diccionario_jerga:
-            clave_encontrada = palabra_limpia_dict
-        elif palabra_limpia_dict in mapeo_variaciones:
-            clave_encontrada = mapeo_variaciones[palabra_limpia_dict]
-            
-        if clave_encontrada and " " not in clave_encontrada:
-            definicion = diccionario_jerga[clave_encontrada]
-            
-            # Aislar los signos originales que puedan estar pegados al principio o al final
-            if p_sub.lower().startswith(palabra_limpia_dict):
-                parte_palabra = p_sub[:len(palabra_limpia_dict)]
-                parte_signos = p_sub[len(palabra_limpia_dict):]
-                formato_subrayado = f"<u>{parte_palabra}</u> [{definicion}]{parte_signos}"
-            else:
-                formato_subrayado = p_sub.replace(palabra_limpia_dict, f"<u>{palabra_limpia_dict}</u> [{definicion}]")
-                
-            resultado_subrayado_lista.append(formato_subrayado)
+        # Extraemos los signos de puntuación del inicio y del final
+        match = re.match(r'^([¡¿?!(,.:;)]*)(.*?)([!?,.:;)]*)$', palabra_or)
+        if match:
+            signos_inicio, palabra_core, signos_fin = match.groups()
         else:
-            resultado_subrayado_lista.append(p_sub)
+            signos_inicio, palabra_core, signos_fin = "", palabra_or, ""
             
-    texto_subrayado = " ".join(resultado_subrayado_lista)
-    
-    # 3. Restaurar los términos compuestos guardados
-    for marca, reemplazo in mapa_reemplazos_subrayado.items():
-        texto_subrayado = texto_subrayado.replace(marca, reemplazo)
-        
-    return texto_subrayado
+        # Normalizamos el núcleo de la palabra
+        palabra_limpia = normalizar_palabra(palabra_core, diccionario_jerga)
+            
+        if palabra_limpia in diccionario_jerga:
+            definicion = diccionario_jerga[palabra_limpia]
+            palabra_formateada = f"{signos_inicio}<u>{palabra_core}</u> [{definicion}]{signos_fin}"
+            frase_traducida.append(palabra_formateada)
+        else:
+            frase_traducida.append(palabra_or)
+            
+    resultado = " ".join(frase_traducida)
+    return resultado
 
 # --- Interfaz Gráfica (Streamlit UI) ---
 st.title("GenZlation")
@@ -202,7 +248,7 @@ st.write("")
 # Caja de texto para el usuario
 texto_usuario = st.text_area(
     "Escribe o pega aquí tu texto:",
-    placeholder="Ejemplo: Ese outfit sirve demasiado, estás basado pero eres un poco delulu..."
+    placeholder="Ejemplo: Megaghosteé a mi amix porque estaba superbasada y me dio cringe..."
 )
 
 # Contador y validación de palabras máximo 100
@@ -219,9 +265,12 @@ if st.button("✨ Traducir"):
     elif num_palabras > 100:
         st.error(f"¡Has superado el límite! Tu texto tiene {num_palabras} palabras. El máximo permitido son 100.")
     else:
-        res_subrayado = traducir_jerga_genz(texto_usuario)
+        resultado = traducir_jerga_genz(texto_usuario)
         
         st.success("¡Traducción realizada!")
-        st.markdown("📝 **Texto Traducido y Analizado:**")
-        st.write(res_subrayado, unsafe_allow_html=True)
+        st.markdown("📝 **Texto Traducido:**")
+        
+        # Usamos st.write con unsafe_allow_html=True para procesar etiquetas <u>
+        st.write(resultado, unsafe_allow_html=True)
+
         
